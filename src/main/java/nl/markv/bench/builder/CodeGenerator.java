@@ -1,5 +1,8 @@
 package nl.markv.bench.builder;
 
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -60,6 +63,12 @@ public class CodeGenerator {
 		}
 	}
 
+	private final Mode mode;
+
+	public CodeGenerator(Mode mode) {
+		this.mode = mode;
+	}
+
 	static Type[] TYPES = new Type[]{
 			new Type("int", "2", null),
 			new Type("Short", "1", "@Nonnull"),
@@ -71,12 +80,35 @@ public class CodeGenerator {
 	};
 
 	public static void main(String[] args) {
-		var gen = new CodeGenerator();
-		System.out.println(gen.generateDataClass(Mode.ImmutableStagedBuilder, "TestImmutable", 6, 4));
-		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 8, 2));
+		int N = 1_500;
+		saveGeneratedFiles(new CodeGenerator(Mode.ConstructorOnly), N);
+		saveGeneratedFiles(new CodeGenerator(Mode.HardCodedBuilder), N);
+		saveGeneratedFiles(new CodeGenerator(Mode.ImmutableFlexibleBuilder), N);
+		saveGeneratedFiles(new CodeGenerator(Mode.ImmutableStagedBuilder), N);
 	}
 
-	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
+	public static void saveGeneratedFiles(CodeGenerator gen, int fileCount) {
+		System.out.print(gen.mode.name());
+		var dir = Paths.get("generated", gen.mode.name().toLowerCase(), "src", "main", "test");
+		dir.toFile().mkdirs();
+		for (int seed = 0; seed < fileCount; seed++) {
+			if (seed % 1000 == 0) {
+				System.out.print('.');
+			}
+			var fieldCount = 1 + (seed % 99);
+			var clsName = gen.mode.name() + seed;
+			var txt = gen.generateDataClass(clsName, fieldCount, 2 + seed);
+			var pth = Paths.get(dir.toString(), clsName + ".java").toFile();
+			try (PrintStream printer = new PrintStream(pth)) {
+				printer.println(txt);
+			} catch (FileNotFoundException ex) {
+				throw new RuntimeException(ex);
+			}
+		}
+		System.out.println(" done");
+	}
+
+	CharSequence generateDataClass(String className, int fieldCount, int seed) {
 		var src = new StringBuilder();
 		src.append(generateHeader(mode));
 		src.append(generateTypeOpen(mode, className));
@@ -181,5 +213,11 @@ public class CodeGenerator {
 			}
 		}
 		return src;
+	}
+
+	private static void check(boolean isTrue) {
+		if (!isTrue) {
+			throw new AssertionError();
+		}
 	}
 }
