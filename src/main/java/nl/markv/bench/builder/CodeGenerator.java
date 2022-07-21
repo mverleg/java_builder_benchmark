@@ -1,22 +1,45 @@
 package nl.markv.bench.builder;
 
+import java.util.List;
+import java.util.stream.IntStream;
+
 import javax.annotation.Nullable;
 
 public class CodeGenerator {
 
 	static class Type {
-		final String typeName;
-		final String exampleValue;
+		final String name;
+		final String value;
 		final @Nullable String annotation;
 
-		public Type(String typeName, String exampleValue, @Nullable String annotation) {
-			this.typeName = typeName;
-			this.exampleValue = exampleValue;
+		public Type(String name, String value, @Nullable String annotation) {
+			this.name = name;
+			this.value = value;
 			this.annotation = annotation;
+		}
+	}
+
+	static class Field {
+		final Type type;
+		final int index;
+
+		public Field(Type type, int index) {
+			this.type = type;
+			this.index = index;
+		}
+
+		CharSequence fieldName() {
+			return type.name + "Field" + (index + 1);
+		}
+
+		CharSequence getterName() {
+			return ("boolean".equals(type.name) ? "is" : "get") +
+					type.name.substring(0, 1).toUpperCase() + type.name.substring(1) +
+					"Field" + (index + 1);
 		}
 
 		CharSequence annotatedType() {
-			return annotation == null ? typeName : annotation + ' ' + typeName;
+			return type.annotation == null ? type.name : type.annotation + ' ' + type.name;
 		}
 	}
 
@@ -49,57 +72,74 @@ public class CodeGenerator {
 
 	public static void main(String[] args) {
 		var gen = new CodeGenerator();
-		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 8, 2));
 		System.out.println(gen.generateDataClass(Mode.ImmutableStagedBuilder, "TestImmutable", 6, 4));
+		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 8, 2));
 	}
 
 	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
+		var fields = IntStream.range(0, fieldCount)
+				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
+				.toList();
 		var src = new StringBuilder()
 				.append("public ")
 				.append(mode.isInterface() ? "interface " : "final class ")
 				.append(className)
 				.append(" {\n");
 		if (!mode.isInterface()) {
-			for (int i = 0; i < fieldCount; i++) {
-				var type = TYPES[(seed + i) % TYPES.length];
-				src.append("\tprivate final ")
-						.append(type.annotatedType())
-						.append(' ')
-						.append(makeFieldName(type.typeName, i))
-						.append(";\n");
-			}
+			src.append(generateFields(mode, fields));
 		}
-		for (int i = 0; i < fieldCount; i++) {
-			var type = TYPES[(seed + i) % TYPES.length];
+		if (!mode.isInterface()) {
+			src.append(generateConstructor(className, mode, fields));
+		}
+		src.append(generateGetters(mode, fields));
+		src.append("}\n");
+		return src;
+	}
+
+		private CharSequence generateFields(Mode mode, List<Field> fields) {
+		var src = new StringBuilder();
+		for (var field : fields) {
+			src.append("\tprivate final ")
+					.append(field.annotatedType())
+					.append(' ')
+					.append(field.fieldName())
+					.append(";\n");
+		}
+		return src;
+	}
+
+	private CharSequence generateConstructor(String className, Mode mode, List<Field> fields) {
+		var src = new StringBuilder()
+				.append("\tpublic ")
+				.append(className)
+				.append("(\n");
+		for (var field : fields) {
+			src.append("\t\t")
+					.append(field.annotatedType())
+					.append(' ')
+					.append(field.fieldName())
+					.append(",\n");
+		}
+		return src.append("}\n");
+	}
+
+	private CharSequence generateGetters(Mode mode, List<Field> fields) {
+		var src = new StringBuilder();
+		for (var field : fields) {
 			src.append("\n\t")
 					.append(mode.isInterface() ? "" : "public ")
-					.append(type.annotatedType())
+					.append(field.annotatedType())
 					.append(' ')
-					.append(makeGetterName(type.typeName, i))
+					.append(field.getterName())
 					.append("()");
 			if (mode.isInterface()) {
 				src.append(";\n");
 			} else {
 				src.append(" {\n\t\treturn this.")
-						.append(makeFieldName(type.typeName, i))
+						.append(field.fieldName())
 						.append(";\n\t}\n");
 			}
 		}
-		src.append("}\n");
 		return src;
-	}
-
-	void generateBuilder() {
-
-	}
-
-	CharSequence makeFieldName(String type, int i) {
-		return type.toLowerCase() + "Field" + (i + 1);
-	}
-
-	CharSequence makeGetterName(String type, int i) {
-		return ("boolean".equals(type) ? "is" : "get") +
-				type.substring(0, 1).toUpperCase() + type.substring(1) +
-				"Field" + (i + 1);
 	}
 }
