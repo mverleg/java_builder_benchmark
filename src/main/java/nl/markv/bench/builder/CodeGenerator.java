@@ -13,6 +13,24 @@ public class CodeGenerator {
 			this.annotation = annotation;
 		}
 	}
+
+	enum Mode {
+		ConstructorOnly,
+		HardCodedBuilder,
+		ImmutableFlexibleBuilder,
+		ImmutableStagedBuilder,
+		;
+
+		boolean isInterface() {
+			return switch (this) {
+				case ConstructorOnly -> false;
+				case HardCodedBuilder -> false;
+				case ImmutableFlexibleBuilder -> true;
+				case ImmutableStagedBuilder -> true;
+			};
+		}
+	}
+
 	static Type[] TYPES = new Type[]{
 			new Type("int", "2", "@Nonnull"),
 			new Type("Short", "1", "@Nonnull"),
@@ -24,11 +42,26 @@ public class CodeGenerator {
 	};
 
 	public static void main(String[] args) {
-		System.out.println("Hello World!");
+		var gen = new CodeGenerator();
+		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 17, 2));
 	}
 
-	void generateDataClass(String className, int fieldCount, int seed) {
-		var src = new StringBuilder();
+	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
+		var src = new StringBuilder()
+				.append("public ")
+				.append(mode.isInterface() ? "interface " : "final class ")
+				.append(className)
+				.append(" {\n");
+		for (int i = 0; i < fieldCount; i++) {
+			var type = TYPES[(seed + i) % TYPES.length];
+			src.append("\tprivate final ")
+					.append(type.annotation)
+					.append(' ')
+					.append(type.typeName)
+					.append(";\n");
+		}
+		src.append("}\n");
+		return src;
 	}
 
 	void generateBuilder() {
