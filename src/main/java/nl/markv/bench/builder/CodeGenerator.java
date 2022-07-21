@@ -29,7 +29,7 @@ public class CodeGenerator {
 		}
 
 		CharSequence fieldName() {
-			return type.name + "Field" + (index + 1);
+			return type.name.toLowerCase() + "Field" + (index + 1);
 		}
 
 		CharSequence getterName() {
@@ -77,14 +77,12 @@ public class CodeGenerator {
 	}
 
 	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
+		var src = new StringBuilder();
+		src.append(generateHeader());
+		src.append(generateTypeOpen(mode, className));
 		var fields = IntStream.range(0, fieldCount)
 				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
 				.toList();
-		var src = new StringBuilder()
-				.append("public ")
-				.append(mode.isInterface() ? "interface " : "final class ")
-				.append(className)
-				.append(" {\n");
 		if (!mode.isInterface()) {
 			src.append(generateFields(mode, fields));
 		}
@@ -92,11 +90,31 @@ public class CodeGenerator {
 			src.append(generateConstructor(className, mode, fields));
 		}
 		src.append(generateGetters(mode, fields));
-		src.append("}\n");
+		src.append(generateTypeClose());
 		return src;
 	}
 
-		private CharSequence generateFields(Mode mode, List<Field> fields) {
+	CharSequence generateHeader() {
+		return new StringBuilder()
+				.append("package test;\n\n")
+				.append("import javax.annotation.Nonnull;\n")
+				.append("import javax.annotation.Nullable;\n")
+				.append('\n');
+	}
+
+	CharSequence generateTypeClose() {
+		return "}\n";
+	}
+
+	CharSequence generateTypeOpen(Mode mode, String className) {
+		return new StringBuilder()
+				.append("public ")
+				.append(mode.isInterface() ? "interface " : "final class ")
+				.append(className)
+				.append(" {\n");
+	}
+
+	CharSequence generateFields(Mode mode, List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
 			src.append("\tprivate final ")
@@ -105,25 +123,38 @@ public class CodeGenerator {
 					.append(field.fieldName())
 					.append(";\n");
 		}
-		return src;
+		return src.append('\n');
 	}
 
-	private CharSequence generateConstructor(String className, Mode mode, List<Field> fields) {
-		var src = new StringBuilder()
-				.append("\tpublic ")
+	CharSequence generateConstructor(String className, Mode mode, List<Field> fields) {
+		var src = new StringBuilder("\t")
+				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
+				.append(' ')
 				.append(className)
-				.append("(\n");
+				.append("(");
+		boolean isFirst = true;
 		for (var field : fields) {
-			src.append("\t\t")
-					.append(field.annotatedType())
+			if (isFirst) {
+				isFirst = false;
+			} else {
+				src.append(",\n\t\t\t");
+			}
+			src.append(field.annotatedType())
 					.append(' ')
-					.append(field.fieldName())
-					.append(",\n");
+					.append(field.fieldName());
 		}
-		return src.append("}\n");
+		src.append(") {\n");
+		for (var field : fields) {
+			src.append("\t\tthis.")
+					.append(field.fieldName())
+					.append(" = ")
+					.append(field.fieldName())
+					.append(";\n");
+		}
+		return src.append("\t}\n");
 	}
 
-	private CharSequence generateGetters(Mode mode, List<Field> fields) {
+	CharSequence generateGetters(Mode mode, List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
 			src.append("\n\t")
