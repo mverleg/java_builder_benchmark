@@ -78,7 +78,7 @@ public class CodeGenerator {
 
 	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
 		var src = new StringBuilder();
-		src.append(generateHeader());
+		src.append(generateHeader(mode));
 		src.append(generateTypeOpen(mode, className));
 		var fields = IntStream.range(0, fieldCount)
 				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
@@ -94,24 +94,33 @@ public class CodeGenerator {
 		return src;
 	}
 
-	CharSequence generateHeader() {
-		return new StringBuilder()
+	CharSequence generateHeader(Mode mode) {
+		var src = new StringBuilder()
 				.append("package test;\n\n")
 				.append("import javax.annotation.Nonnull;\n")
-				.append("import javax.annotation.Nullable;\n")
-				.append('\n');
+				.append("import javax.annotation.Nullable;\n");
+		if (mode.isInterface()) {
+			src.append("import org.immutables.value.Value;\n");
+		}
+		return src.append('\n');
+	}
+
+	CharSequence generateTypeOpen(Mode mode, String className) {
+		var src = new StringBuilder();
+		if (mode.isInterface()) {
+			src.append("@Value.Immutable\n");
+		}
+		if (mode == Mode.ImmutableStagedBuilder) {
+			src.append("@Value.Style(stagedBuilder = true)\n");
+		}
+		return src.append("public ")
+				.append(mode.isInterface() ? "interface " : "final class ")
+				.append(className)
+				.append(" {\n");
 	}
 
 	CharSequence generateTypeClose() {
 		return "}\n";
-	}
-
-	CharSequence generateTypeOpen(Mode mode, String className) {
-		return new StringBuilder()
-				.append("public ")
-				.append(mode.isInterface() ? "interface " : "final class ")
-				.append(className)
-				.append(" {\n");
 	}
 
 	CharSequence generateFields(Mode mode, List<Field> fields) {
