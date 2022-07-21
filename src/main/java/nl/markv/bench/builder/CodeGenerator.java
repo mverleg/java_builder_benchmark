@@ -43,7 +43,8 @@ public class CodeGenerator {
 
 	public static void main(String[] args) {
 		var gen = new CodeGenerator();
-		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 17, 2));
+		System.out.println(gen.generateDataClass(Mode.ConstructorOnly, "TestData", 8, 2));
+		System.out.println(gen.generateDataClass(Mode.ImmutableStagedBuilder, "TestData", 8, 4));
 	}
 
 	CharSequence generateDataClass(Mode mode, String className, int fieldCount, int seed) {
@@ -52,13 +53,37 @@ public class CodeGenerator {
 				.append(mode.isInterface() ? "interface " : "final class ")
 				.append(className)
 				.append(" {\n");
+		if (!mode.isInterface()) {
+			for (int i = 0; i < fieldCount; i++) {
+				var type = TYPES[(seed + i) % TYPES.length];
+				src.append("\tprivate final ")
+						.append(type.annotation)
+						.append(' ')
+						.append(type.typeName)
+						.append(' ')
+						.append(makeName(type.typeName, i))
+						.append(";\n");
+			}
+		}
 		for (int i = 0; i < fieldCount; i++) {
 			var type = TYPES[(seed + i) % TYPES.length];
-			src.append("\tprivate final ")
+			var fieldName = makeName(type.typeName, i);
+			src.append("\n\t")
+					.append(mode.isInterface() ? "" : "public ")
 					.append(type.annotation)
 					.append(' ')
 					.append(type.typeName)
-					.append(";\n");
+					.append(" get")
+					.append(fieldName)
+					.append("()");
+			if (mode.isInterface()) {
+				src.append(';');
+			} else {
+				src.append(" {\n\t\treturn this.")
+						.append(fieldName)
+						.append(";\n\t}\n");
+			}
+			src.append("\n");
 		}
 		src.append("}\n");
 		return src;
@@ -66,5 +91,9 @@ public class CodeGenerator {
 
 	void generateBuilder() {
 
+	}
+
+	CharSequence makeName(String type, int i) {
+		return type.toLowerCase() + "Field" + (i + 1);
 	}
 }
