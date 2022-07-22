@@ -1,5 +1,6 @@
 package nl.markv.bench.builder;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
@@ -7,6 +8,8 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import javax.annotation.Nullable;
+
+import static java.lang.System.exit;
 
 public class CodeGenerator {
 
@@ -79,17 +82,9 @@ public class CodeGenerator {
 			new Type("CharSequence", "null", "@Nullable"),
 	};
 
-	public static void main(String[] args) {
-		int N = 2_000;
-		saveGeneratedFiles(new CodeGenerator(Mode.ConstructorOnly), N);
-		saveGeneratedFiles(new CodeGenerator(Mode.HardCodedBuilder), N);
-		saveGeneratedFiles(new CodeGenerator(Mode.ImmutableFlexibleBuilder), N);
-		saveGeneratedFiles(new CodeGenerator(Mode.ImmutableStagedBuilder), N);
-	}
-
-	public static void saveGeneratedFiles(CodeGenerator gen, int fileCount) {
+	public static void saveGeneratedFiles(CodeGenerator gen, File outPth, int fileCount) {
 		System.out.print(gen.mode.name());
-		var dir = Paths.get("/tmp", "generated", gen.mode.name().toLowerCase(), "src", "main", "test");
+		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "test");
 		dir.toFile().mkdirs();
 		for (int seed = 0; seed < fileCount; seed++) {
 			if (seed % 1000 == 0) {
@@ -106,6 +101,25 @@ public class CodeGenerator {
 			}
 		}
 		System.out.println(" done");
+	}
+
+	public static void main(String[] args) {
+		if (args.length < 2) {
+			System.err.println("provide two arguments: 1) output path 2) number of files");
+			exit(1);
+		}
+		var outPth = new File(args[0]);
+		int N = 1;
+		try {
+			N = Integer.parseInt(args[1]);
+		} catch (NumberFormatException ex) {
+			System.err.println("second argument should be a valid, positive number");
+			exit(1);
+		}
+		System.out.println("generating " + N + " files in '" + outPth + "' for " + Mode.values().length + " generators");
+		for (Mode mode : Mode.values()) {
+			saveGeneratedFiles(new CodeGenerator(mode), outPth, N);
+		}
 	}
 
 	CharSequence generateDataClass(String className, int fieldCount, int seed) {
