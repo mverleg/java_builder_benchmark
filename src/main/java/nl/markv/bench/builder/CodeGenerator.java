@@ -80,7 +80,7 @@ public class CodeGenerator {
 	};
 
 	public static void main(String[] args) {
-		int N = 1_500;
+		int N = 2_000;
 		saveGeneratedFiles(new CodeGenerator(Mode.ConstructorOnly), N);
 		saveGeneratedFiles(new CodeGenerator(Mode.HardCodedBuilder), N);
 		saveGeneratedFiles(new CodeGenerator(Mode.ImmutableFlexibleBuilder), N);
@@ -89,7 +89,7 @@ public class CodeGenerator {
 
 	public static void saveGeneratedFiles(CodeGenerator gen, int fileCount) {
 		System.out.print(gen.mode.name());
-		var dir = Paths.get("generated", gen.mode.name().toLowerCase(), "src", "main", "test");
+		var dir = Paths.get("/tmp", "generated", gen.mode.name().toLowerCase(), "src", "main", "test");
 		dir.toFile().mkdirs();
 		for (int seed = 0; seed < fileCount; seed++) {
 			if (seed % 1000 == 0) {
