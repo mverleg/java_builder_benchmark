@@ -1,17 +1,31 @@
 package nl.markv.bench.builder;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import javax.annotation.Nullable;
 
-import static java.lang.System.exit;
+public class ClasGenerator {
 
-public class CodeGenerator {
+	static class Clas {
+		final String name;
+
+		public Clas(String name) {
+			this.name = name;
+		}
+
+		CharSequence typeName() {
+			return this.name;
+		}
+
+		CharSequence implName() {
+			return this.name + "Impl";
+		}
+
+		CharSequence builderName() {
+			return this.name + "Builder";
+		}
+	}
 
 	static class Type {
 		final String name;
@@ -69,7 +83,10 @@ public class CodeGenerator {
 
 	private final Mode mode;
 
-	public CodeGenerator(Mode mode) {
+	// var inst = ImmutableStagedBuilder7Impl.builder().int3(1).short4((short)1).string5("").string6("").double7(1d).build();
+	//TODO @mark: ^
+
+	public ClasGenerator(Mode mode) {
 		this.mode = mode;
 	}
 
@@ -87,58 +104,20 @@ public class CodeGenerator {
 			new Type("List<Float>", "Arrays.asList(1f, 2f, 3f)", "@Nonnull"),
 	};
 
-	public static void saveGeneratedFiles(CodeGenerator gen, File outPth, int fileCount) {
-		System.out.print(gen.mode.name());
-		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "java", "bench");
-		dir.toFile().mkdirs();
-		for (int seed = 0; seed < fileCount; seed++) {
-			if (seed % 1000 == 0) {
-				System.out.print('.');
-			}
-			var fieldCount = 1 + (seed % 99);
-			var clsName = gen.mode.name() + seed;
-			var txt = gen.generateDataClass(clsName, fieldCount, 2 + seed);
-			var pth = Paths.get(dir.toString(), clsName + ".java").toFile();
-			try (PrintStream printer = new PrintStream(pth)) {
-				printer.println(txt);
-			} catch (FileNotFoundException ex) {
-				throw new RuntimeException(ex);
-			}
-		}
-		System.out.println(" done");
-	}
-
-	public static void main(String[] args) {
-		if (args.length < 2) {
-			System.err.println("provide two arguments: 1) output path 2) number of files");
-			exit(1);
-		}
-		var outPth = new File(args[0]);
-		int N = 1;
-		try {
-			N = Integer.parseInt(args[1]);
-		} catch (NumberFormatException ex) {
-			System.err.println("second argument should be a valid, positive number");
-			exit(1);
-		}
-		System.out.println("generating " + N + " files in '" + outPth + "' for " + Mode.values().length + " generators");
-		for (Mode mode : Mode.values()) {
-			saveGeneratedFiles(new CodeGenerator(mode), outPth, N);
-		}
-	}
-
-	CharSequence generateDataClass(String className, int fieldCount, int seed) {
+	CharSequence generateDataClass(Clas clas, int fieldCount, int seed) {
 		var src = new StringBuilder();
 		src.append(generateHeader(mode));
-		src.append(generateTypeOpen(mode, className));
+		src.append(generateTypeOpen(mode, clas));
 		var fields = IntStream.range(0, fieldCount)
 				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
 				.toList();
 		if (!mode.isInterface()) {
 			src.append(generateFields(mode, fields));
 		}
-		if (!mode.isInterface()) {
-			src.append(generateConstructor(className, mode, fields));
+		if (mode.isInterface()) {
+			src.append(generateBuilderForward(clas));
+		} else {
+			src.append(generateConstructor(clas, mode, fields));
 		}
 		src.append(generateGetters(mode, fields));
 		src.append(generateTypeClose());
@@ -159,17 +138,23 @@ public class CodeGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateTypeOpen(Mode mode, String className) {
+	CharSequence generateTypeOpen(Mode mode, Clas clas) {
 		var src = new StringBuilder();
 		if (mode.isInterface()) {
-			src.append("@Value.Immutable\n");
+			src.append("@Value.Immutable\n")
+					.append("@Value.Style(");
 		}
 		if (mode == Mode.ImmutableStagedBuilder) {
-			src.append("@Value.Style(stagedBuilder = true)\n");
+			src.append("stagedBuilder = true, ");
+		}
+		if (mode.isInterface()) {
+			src.append("typeImmutable = \"*Impl\", ")
+					.append("typeBuilder = \"*Builder\", ")
+					.append("passAnnotations = {Nullable.class, Nonnull.class})\n");
 		}
 		return src.append("public ")
 				.append(mode.isInterface() ? "interface " : "final class ")
-				.append(className)
+				.append(clas.name)
 				.append(" {\n");
 	}
 
@@ -189,11 +174,20 @@ public class CodeGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateConstructor(String className, Mode mode, List<Field> fields) {
+	CharSequence generateBuilderForward(Clas clas) {
+		return new StringBuilder("\t")
+				.append("\tpublic static ")
+				.append(clas.builderName())
+				.append(" builder() {\n\t\treturn ")
+				.append(clas.implName())
+				.append(".builder();\n\t}\n\n");
+	}
+
+	CharSequence generateConstructor(Clas clas, Mode mode, List<Field> fields) {
 		var src = new StringBuilder("\t")
 				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
 				.append(' ')
-				.append(className)
+				.append(clas.name)
 				.append("(\n\t\t\t");
 		boolean isFirst = true;
 		for (var field : fields) {
