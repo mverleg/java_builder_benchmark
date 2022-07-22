@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-iter_cnt=3
-file_cnt=2000
+iter_cnt=1
+file_cnt=1
 
 set -eEuo pipefail
 
@@ -33,7 +33,8 @@ do
             end_time=$(date +%s%3N)
             total_time=$((total_time + end_time - start_time))
         done
-        printf 'TOTAL TIME FOR %s WAS %s MILLIS\n' "$d" "$total_time"
+        avg_time="$(($total_time / $iter_cnt))"
+        printf 'AVG TIME FOR %s WAS %s MILLIS\n' "$d" "$avg_time"
     )
 done
 

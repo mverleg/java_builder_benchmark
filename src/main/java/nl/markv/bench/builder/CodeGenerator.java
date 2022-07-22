@@ -28,20 +28,21 @@ public class CodeGenerator {
 	static class Field {
 		final Type type;
 		final int index;
+		final String baseName;
 
 		public Field(Type type, int index) {
 			this.type = type;
 			this.index = index;
+			var name = type.name.replace("[]", "Array").replaceAll("([a-zA-Z]+)<([a-zA-Z]+)>", "$2$1") + (index + 1);
+			this.baseName = name.substring(0, 1).toUpperCase() + name.substring(1);
 		}
 
 		CharSequence fieldName() {
-			return type.name.toLowerCase() + "Field" + (index + 1);
+			return "a" + this.baseName;
 		}
 
 		CharSequence getterName() {
-			return ("boolean".equals(type.name) ? "is" : "get") +
-					type.name.substring(0, 1).toUpperCase() + type.name.substring(1) +
-					"Field" + (index + 1);
+			return ("boolean".equals(type.name) ? "is" : "get") + this.baseName;
 		}
 
 		CharSequence annotatedType() {
@@ -80,11 +81,15 @@ public class CodeGenerator {
 			new Type("double", "3.14e0", null),
 			new Type("Long", "Long.MAX_VALUE", "@Nullable"),
 			new Type("CharSequence", "null", "@Nullable"),
+			new Type("LocalDateTime", "LocalDateTime.of(2022, 7, 22, 19, 0, 9)", "@Nullable"),
+			new Type("BigDecimal", "BigDecimal.TEN", "@Nonnull"),
+			new Type("int[]", "new int[]{1, 2, 3}", "@Nullable"),
+			new Type("List<Float>", "Arrays.asList(1f, 2f, 3f)", "@Nonnull"),
 	};
 
 	public static void saveGeneratedFiles(CodeGenerator gen, File outPth, int fileCount) {
 		System.out.print(gen.mode.name());
-		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "test");
+		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "java", "bench");
 		dir.toFile().mkdirs();
 		for (int seed = 0; seed < fileCount; seed++) {
 			if (seed % 1000 == 0) {
@@ -142,9 +147,12 @@ public class CodeGenerator {
 
 	CharSequence generateHeader(Mode mode) {
 		var src = new StringBuilder()
-				.append("package test;\n\n")
+				.append("package bench;\n\n")
 				.append("import javax.annotation.Nonnull;\n")
-				.append("import javax.annotation.Nullable;\n");
+				.append("import javax.annotation.Nullable;\n")
+				.append("import java.time.LocalDateTime;\n")
+				.append("import java.math.BigDecimal;\n")
+				.append("import java.util.List;\n");
 		if (mode.isInterface()) {
 			src.append("import org.immutables.value.Value;\n");
 		}
@@ -186,7 +194,7 @@ public class CodeGenerator {
 				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
 				.append(' ')
 				.append(className)
-				.append("(");
+				.append("(\n\t\t\t");
 		boolean isFirst = true;
 		for (var field : fields) {
 			if (isFirst) {
@@ -227,11 +235,5 @@ public class CodeGenerator {
 			}
 		}
 		return src;
-	}
-
-	private static void check(boolean isTrue) {
-		if (!isTrue) {
-			throw new AssertionError();
-		}
 	}
 }
