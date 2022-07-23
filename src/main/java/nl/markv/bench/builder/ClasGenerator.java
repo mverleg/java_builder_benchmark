@@ -3,6 +3,8 @@ package nl.markv.bench.builder;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static nl.markv.bench.builder.GeneratorUtil.generateConstructor;
+import static nl.markv.bench.builder.GeneratorUtil.generateFields;
 import static nl.markv.bench.builder.Type.TYPES;
 
 class ClasGenerator {
@@ -21,8 +23,8 @@ class ClasGenerator {
 				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
 				.toList();
 		if (!mode.isInterface()) {
-			src.append(generateFields(fields));
-			src.append(generateConstructor(clas, fields));
+			src.append(generateFields("", fields));
+			src.append(generateConstructor("", clas.typeName(), fields));
 		}
 		if (mode != Mode.ConstructorOnly) {
 			src.append(generateBuilderForward(clas, fields));
@@ -85,18 +87,6 @@ class ClasGenerator {
 		return "}\n";
 	}
 
-	CharSequence generateFields(List<Field> fields) {
-		var src = new StringBuilder();
-		for (var field : fields) {
-			src.append("\tprivate final ")
-					.append(field.annotatedType())
-					.append(' ')
-					.append(field.fieldName())
-					.append(";\n");
-		}
-		return src.append('\n');
-	}
-
 	CharSequence generateBuilderForward(Clas clas, List<Field> fields) {
 		firstRequiredField(clas, fields);
 		assert mode != Mode.ConstructorOnly;
@@ -111,34 +101,6 @@ class ClasGenerator {
 				.append(" builder() {\n\t\treturn ")
 				.append(clas.implName())
 				.append(".builder();\n\t}\n");
-	}
-
-	CharSequence generateConstructor(Clas clas, List<Field> fields) {
-		var src = new StringBuilder("\t")
-				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
-				.append(' ')
-				.append(clas.typeName())
-				.append("(\n\t\t\t");
-		boolean isFirst = true;
-		for (var field : fields) {
-			if (isFirst) {
-				isFirst = false;
-			} else {
-				src.append(",\n\t\t\t");
-			}
-			src.append(field.annotatedType())
-					.append(' ')
-					.append(field.fieldName());
-		}
-		src.append(") {\n");
-		for (var field : fields) {
-			src.append("\t\tthis.")
-					.append(field.fieldName())
-					.append(" = ")
-					.append(field.fieldName())
-					.append(";\n");
-		}
-		return src.append("\t}\n");
 	}
 
 	CharSequence generateGetters(List<Field> fields) {
