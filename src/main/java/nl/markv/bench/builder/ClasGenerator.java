@@ -41,7 +41,7 @@ class ClasGenerator {
 				return field;
 			}
 		}
-		System.err.println("no required fields for " + clas.name + ", falling back to first field");
+		System.err.println("no required fields for " + clas.typeName() + ", falling back to first field");
 		return fields.get(0);
 	}
 
@@ -77,7 +77,7 @@ class ClasGenerator {
 		}
 		return src.append("public ")
 				.append(mode.isInterface() ? "interface " : "final class ")
-				.append(clas.name)
+				.append(clas.typeName())
 				.append(" {\n");
 	}
 
@@ -122,7 +122,7 @@ class ClasGenerator {
 		var src = new StringBuilder("\t")
 				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
 				.append(' ')
-				.append(clas.name)
+				.append(clas.typeName())
 				.append("(\n\t\t\t");
 		boolean isFirst = true;
 		for (var field : fields) {
