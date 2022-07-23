@@ -39,7 +39,7 @@ class ClasGenerator {
 			src.append(generateFields(mode, fields));
 		}
 		if (mode.isInterface()) {
-			src.append(generateBuilderForward(clas));
+			src.append(generateBuilderForward(clas, fields.get(0)));
 		} else {
 			src.append(generateConstructor(clas, mode, fields));
 		}
@@ -50,7 +50,7 @@ class ClasGenerator {
 
 	CharSequence generateHeader(Mode mode) {
 		var src = new StringBuilder()
-				.append("package bench;\n\n")
+				.append("package bench.data;\n\n")
 				.append("import javax.annotation.Nonnull;\n")
 				.append("import javax.annotation.Nullable;\n")
 				.append("import java.time.LocalDateTime;\n")
@@ -73,7 +73,9 @@ class ClasGenerator {
 		}
 		if (mode.isInterface()) {
 			src.append("typeImmutable = \"*Impl\", ")
+					//.append("packageGenerated = \"bench.gen\", ")
 					.append("typeBuilder = \"*Builder\", ")
+					.append("visibility = Value.Style.ImplementationVisibility.PACKAGE, ")
 					.append("passAnnotations = {Nullable.class, Nonnull.class})\n");
 		}
 		return src.append("public ")
@@ -98,13 +100,16 @@ class ClasGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateBuilderForward(Clas clas) {
+	CharSequence generateBuilderForward(Clas clas, Field field) {
 		return new StringBuilder("\t")
-				.append("\tpublic static ")
-				.append(clas.builderName())
+				.append("\tstatic ")
+				.append(clas.implName())
+				.append('.')
+				.append(field.baseName)
+				.append("BuildStage")
 				.append(" builder() {\n\t\treturn ")
 				.append(clas.implName())
-				.append(".builder();\n\t}\n\n");
+				.append(".builder();\n\t}\n");
 	}
 
 	CharSequence generateConstructor(Clas clas, Mode mode, List<Field> fields) {

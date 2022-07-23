@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 
 import static java.lang.System.exit;
 
-class MainGenerator {
+public class MainGenerator {
 
 	private final Mode mode;
 
@@ -20,7 +20,7 @@ class MainGenerator {
 
 	static void saveGeneratedFiles(MainGenerator gen, File outPth, int fileCount) {
 		System.out.print(gen.mode.name());
-		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "java", "bench");
+		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "java", "bench", "data");
 		dir.toFile().mkdirs();
 		for (int seed = 0; seed < fileCount; seed++) {
 			if (seed % 1000 == 0) {

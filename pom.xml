@@ -59,7 +59,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>nl.markv.bench.builder.CodeGenerator</mainClass>
+                    <mainClass>nl.markv.bench.builder.MainGenerator</mainClass>
                 </configuration>
             </plugin>
         </plugins>
