@@ -3,30 +3,15 @@ package nl.markv.bench.builder;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import static nl.markv.bench.builder.Type.TYPES;
+
 class ClasGenerator {
 
 	private final Mode mode;
 
-	// var inst = ImmutableStagedBuilder7Impl.builder().int3(1).short4((short)1).string5("").string6("").double7(1d).build();
-	//TODO @mark: ^
-
 	ClasGenerator(Mode mode) {
 		this.mode = mode;
 	}
-
-	static Type[] TYPES = new Type[]{
-			new Type("int", "2", null),
-			new Type("Short", "1", "@Nonnull"),
-			new Type("String", "\"hello\"", "@Nonnull"),
-			new Type("String", null, null),
-			new Type("double", "3.14e0", null),
-			new Type("Long", "Long.MAX_VALUE", "@Nullable"),
-			new Type("CharSequence", "null", "@Nullable"),
-			new Type("LocalDateTime", "LocalDateTime.of(2022, 7, 22, 19, 0, 9)", "@Nullable"),
-			new Type("BigDecimal", "BigDecimal.TEN", "@Nonnull"),
-			new Type("int[]", "new int[]{1, 2, 3}", "@Nullable"),
-			new Type("List<Float>", "Arrays.asList(1f, 2f, 3f)", "@Nonnull"),
-	};
 
 	CharSequence generateDataClass(Clas clas, int fieldCount, int seed) {
 		var src = new StringBuilder();
@@ -39,13 +24,23 @@ class ClasGenerator {
 			src.append(generateFields(mode, fields));
 		}
 		if (mode.isInterface()) {
-			src.append(generateBuilderForward(clas, fields.get(0)));
+			src.append(generateBuilderForward(clas, firstRequiredField(clas, fields)));
 		} else {
 			src.append(generateConstructor(clas, mode, fields));
 		}
 		src.append(generateGetters(mode, fields));
 		src.append(generateTypeClose());
 		return src;
+	}
+
+	private Field firstRequiredField(Clas clas, List<Field> fields) {
+		for (var field : fields) {
+			if (field.type.isRequired()) {
+				return field;
+			}
+		}
+		System.err.println("no required fields for " + clas.name + ", falling back to first field");
+		return fields.get(0);
 	}
 
 	CharSequence generateHeader(Mode mode) {
@@ -101,8 +96,7 @@ class ClasGenerator {
 	}
 
 	CharSequence generateBuilderForward(Clas clas, Field field) {
-		return new StringBuilder("\t")
-				.append("\tstatic ")
+		return new StringBuilder("\tstatic ")
 				.append(clas.implName())
 				.append('.')
 				.append(field.baseName)
@@ -143,7 +137,7 @@ class ClasGenerator {
 	CharSequence generateGetters(Mode mode, List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
-			src.append("\n\t")
+			src.append("\t")
 					.append(mode.isInterface() ? "" : "public ")
 					.append(field.annotatedType())
 					.append(' ')

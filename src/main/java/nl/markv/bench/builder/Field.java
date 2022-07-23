@@ -21,6 +21,6 @@ class Field {
 	}
 
 	CharSequence annotatedType() {
-		return type.annotation == null ? type.name : type.annotation + ' ' + type.name;
+		return type.nullability == null ? type.name : type.nullability + type.name;
 	}
 }
