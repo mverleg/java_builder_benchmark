@@ -23,8 +23,10 @@ class ClasGenerator {
 		if (!mode.isInterface()) {
 			src.append(generateFields(mode, fields));
 		}
-		if (mode.isInterface()) {
-			src.append(generateBuilderForward(clas, firstRequiredField(clas, fields)));
+		if (mode == Mode.ImmutableFlexibleBuilder) {
+			src.append(generateFlexibleBuilderForward(clas));
+		} else if (mode == Mode.ImmutableStagedBuilder) {
+			src.append(generateStagedBuilderForward(clas, firstRequiredField(clas, fields)));
 		} else {
 			src.append(generateConstructor(clas, mode, fields));
 		}
@@ -95,7 +97,17 @@ class ClasGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateBuilderForward(Clas clas, Field field) {
+	CharSequence generateFlexibleBuilderForward(Clas clas) {
+		return new StringBuilder("\tstatic ")
+				.append(clas.implName())
+				.append('.')
+				.append(clas.builderName())
+				.append(" builder() {\n\t\treturn ")
+				.append(clas.implName())
+				.append(".builder();\n\t}\n");
+	}
+
+	CharSequence generateStagedBuilderForward(Clas clas, Field field) {
 		return new StringBuilder("\tstatic ")
 				.append(clas.implName())
 				.append('.')
