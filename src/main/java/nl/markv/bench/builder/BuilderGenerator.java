@@ -4,28 +4,32 @@ import java.util.List;
 
 class BuilderGenerator {
 
-	BuilderGenerator() {
+	final String indent;
+
+	BuilderGenerator(String indent) {
+		this.indent = indent;
 	}
 
 	CharSequence generateBuilderClass(Clas clas, List<Field> fields) {
 		var src = new StringBuilder();
 		src.append(generateTypeOpen(clas));
 		src.append(generateConstructor(clas, fields));
-		src.append(generateSetters(fields));
-		src.append(generateBuildMethod(clas, fields));
+//		src.append(generateSetters(fields));
+//		src.append(generateBuildMethod(clas, fields));
 		src.append(generateTypeClose());
 		return src;
 	}
 
 	CharSequence generateTypeOpen(Clas clas) {
-		var src = new StringBuilder();
-		return src.append("private static class ")
+		return new StringBuilder("\n")
+				.append(indent)
+				.append("private static class ")
 				.append(clas.typeName())
 				.append(" {\n");
 	}
 
 	CharSequence generateTypeClose() {
-		return "}\n";
+		return indent + "}\n";
 	}
 
 	CharSequence generateFields(Mode mode, List<Field> fields) {
@@ -41,17 +45,18 @@ class BuilderGenerator {
 	}
 
 	CharSequence generateConstructor(Clas clas, List<Field> fields) {
-		var src = new StringBuilder("\t")
-				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
-				.append(' ')
+		var src = new StringBuilder(indent)
+				.append('\t')
 				.append(clas.typeName())
-				.append("(\n\t\t\t");
+				.append("(\n\t\t")
+				.append(indent);
 		boolean isFirst = true;
 		for (var field : fields) {
 			if (isFirst) {
 				isFirst = false;
 			} else {
-				src.append(",\n\t\t\t");
+				src.append(",\n\t\t\t")
+						.append(indent);
 			}
 			src.append(field.annotatedType())
 					.append(' ')
@@ -59,38 +64,36 @@ class BuilderGenerator {
 		}
 		src.append(") {\n");
 		for (var field : fields) {
-			src.append("\t\tthis.")
+			src.append(indent)
+					.append("\t\tthis.")
 					.append(field.fieldName())
 					.append(" = ")
 					.append(field.fieldName())
 					.append(";\n");
 		}
-		return src.append("\t}\n");
+		return src.append(indent)
+				.append("\t}\n");
 	}
 
 	CharSequence generateSetters(List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
 			src.append("\t")
-					.append(mode.isInterface() ? "" : "public ")
+					.append("public ")
 					.append(field.annotatedType())
 					.append(' ')
 					.append(field.getterName())
-					.append("()");
-			if (mode.isInterface()) {
-				src.append(";\n");
-			} else {
-				src.append(" {\n\t\treturn this.")
-						.append(field.fieldName())
-						.append(";\n\t}\n");
-			}
+					.append("()")
+					.append(" {\n\t\treturn this.")
+					.append(field.fieldName())
+					.append(";\n\t}\n");
 		}
 		return src;
 	}
 
 	CharSequence generateBuildMethod(Clas clas, List<Field> fields) {
 		var src = new StringBuilder("\t")
-				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
+				.append("public")
 				.append(' ')
 				.append(clas.typeName())
 				.append("(\n\t\t\t");

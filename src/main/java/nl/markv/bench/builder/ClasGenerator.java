@@ -15,22 +15,22 @@ class ClasGenerator {
 
 	CharSequence generateDataClass(Clas clas, int fieldCount, int seed) {
 		var src = new StringBuilder();
-		src.append(generateHeader(mode));
-		src.append(generateTypeOpen(mode, clas));
+		src.append(generateHeader());
+		src.append(generateTypeOpen(clas));
 		var fields = IntStream.range(0, fieldCount)
 				.mapToObj(i -> new Field(TYPES[(seed + i) % TYPES.length], i))
 				.toList();
 		if (!mode.isInterface()) {
-			src.append(generateFields(mode, fields));
+			src.append(generateFields(fields));
+			src.append(generateConstructor(clas, fields));
 		}
-		if (mode == Mode.ImmutableFlexibleBuilder) {
-			src.append(generateFlexibleBuilderForward(clas));
-		} else if (mode == Mode.ImmutableStagedBuilder) {
-			src.append(generateStagedBuilderForward(clas, firstRequiredField(clas, fields)));
-		} else {
-			src.append(generateConstructor(clas, mode, fields));
+		if (mode != Mode.ConstructorOnly) {
+			src.append(generateBuilderForward(clas, fields));
 		}
-		src.append(generateGetters(mode, fields));
+		src.append(generateGetters(fields));
+		if (mode == Mode.HardCodedBuilder) {
+			src.append(new BuilderGenerator("\t").generateBuilderClass(clas, fields));
+		}
 		src.append(generateTypeClose());
 		return src;
 	}
@@ -45,7 +45,7 @@ class ClasGenerator {
 		return fields.get(0);
 	}
 
-	CharSequence generateHeader(Mode mode) {
+	CharSequence generateHeader() {
 		var src = new StringBuilder()
 				.append("package bench.data;\n\n")
 				.append("import javax.annotation.Nonnull;\n")
@@ -59,7 +59,7 @@ class ClasGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateTypeOpen(Mode mode, Clas clas) {
+	CharSequence generateTypeOpen(Clas clas) {
 		var src = new StringBuilder();
 		if (mode.isInterface()) {
 			src.append("@Value.Immutable\n")
@@ -85,7 +85,7 @@ class ClasGenerator {
 		return "}\n";
 	}
 
-	CharSequence generateFields(Mode mode, List<Field> fields) {
+	CharSequence generateFields(List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
 			src.append("\tprivate final ")
@@ -97,28 +97,23 @@ class ClasGenerator {
 		return src.append('\n');
 	}
 
-	CharSequence generateFlexibleBuilderForward(Clas clas) {
+	CharSequence generateBuilderForward(Clas clas, List<Field> fields) {
+		firstRequiredField(clas, fields);
+		assert mode != Mode.ConstructorOnly;
+		var builderType = switch (mode) {
+			case HardCodedBuilder -> clas.builderName();
+			case ImmutableFlexibleBuilder -> clas.implName() + "." + clas.builderName();
+			case ImmutableStagedBuilder -> clas.implName() + "." + firstRequiredField(clas, fields).baseName;
+			default -> "NO BUILDER TYPE FOR CONSTRUCTOR-ONLY";
+		};
 		return new StringBuilder("\tstatic ")
-				.append(clas.implName())
-				.append('.')
-				.append(clas.builderName())
+				.append(builderType)
 				.append(" builder() {\n\t\treturn ")
 				.append(clas.implName())
 				.append(".builder();\n\t}\n");
 	}
 
-	CharSequence generateStagedBuilderForward(Clas clas, Field field) {
-		return new StringBuilder("\tstatic ")
-				.append(clas.implName())
-				.append('.')
-				.append(field.baseName)
-				.append("BuildStage")
-				.append(" builder() {\n\t\treturn ")
-				.append(clas.implName())
-				.append(".builder();\n\t}\n");
-	}
-
-	CharSequence generateConstructor(Clas clas, Mode mode, List<Field> fields) {
+	CharSequence generateConstructor(Clas clas, List<Field> fields) {
 		var src = new StringBuilder("\t")
 				.append(mode == Mode.HardCodedBuilder ? "private" : "public")
 				.append(' ')
@@ -146,7 +141,7 @@ class ClasGenerator {
 		return src.append("\t}\n");
 	}
 
-	CharSequence generateGetters(Mode mode, List<Field> fields) {
+	CharSequence generateGetters(List<Field> fields) {
 		var src = new StringBuilder();
 		for (var field : fields) {
 			src.append("\t")
