@@ -4,113 +4,21 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.IntStream;
-
-import javax.annotation.Nullable;
 
 import static java.lang.System.exit;
 
-public class MainGenerator {
-
-	static class Clas {
-		final String name;
-
-		public Clas(String name) {
-			this.name = name;
-		}
-
-		CharSequence typeName() {
-			return this.name;
-		}
-
-		CharSequence implName() {
-			return this.name + "Impl";
-		}
-
-		CharSequence builderName() {
-			return this.name + "Builder";
-		}
-	}
-
-	static class Type {
-		final String name;
-		final String value;
-		final @Nullable String annotation;
-
-		public Type(String name, String value, @Nullable String annotation) {
-			this.name = name;
-			this.value = value;
-			this.annotation = annotation;
-		}
-	}
-
-	static class Field {
-		final Type type;
-		final int index;
-		final String baseName;
-
-		public Field(Type type, int index) {
-			this.type = type;
-			this.index = index;
-			var name = type.name.replace("[]", "Array").replaceAll("([a-zA-Z]+)<([a-zA-Z]+)>", "$2$1") + (index + 1);
-			this.baseName = name.substring(0, 1).toUpperCase() + name.substring(1);
-		}
-
-		CharSequence fieldName() {
-			return "a" + this.baseName;
-		}
-
-		CharSequence getterName() {
-			return ("boolean".equals(type.name) ? "is" : "get") + this.baseName;
-		}
-
-		CharSequence annotatedType() {
-			return type.annotation == null ? type.name : type.annotation + ' ' + type.name;
-		}
-	}
-
-	enum Mode {
-		ConstructorOnly,
-		HardCodedBuilder,
-		ImmutableFlexibleBuilder,
-		ImmutableStagedBuilder,
-		;
-
-		boolean isInterface() {
-			return switch (this) {
-				case ConstructorOnly -> false;
-				case HardCodedBuilder -> false;
-				case ImmutableFlexibleBuilder -> true;
-				case ImmutableStagedBuilder -> true;
-			};
-		}
-	}
+class MainGenerator {
 
 	private final Mode mode;
 
 	// var inst = ImmutableStagedBuilder7Impl.builder().int3(1).short4((short)1).string5("").string6("").double7(1d).build();
 	//TODO @mark: ^
 
-	public MainGenerator(Mode mode) {
+	MainGenerator(Mode mode) {
 		this.mode = mode;
 	}
 
-	static Type[] TYPES = new Type[]{
-			new Type("int", "2", null),
-			new Type("Short", "1", "@Nonnull"),
-			new Type("String", "\"hello\"", "@Nonnull"),
-			new Type("String", null, null),
-			new Type("double", "3.14e0", null),
-			new Type("Long", "Long.MAX_VALUE", "@Nullable"),
-			new Type("CharSequence", "null", "@Nullable"),
-			new Type("LocalDateTime", "LocalDateTime.of(2022, 7, 22, 19, 0, 9)", "@Nullable"),
-			new Type("BigDecimal", "BigDecimal.TEN", "@Nonnull"),
-			new Type("int[]", "new int[]{1, 2, 3}", "@Nullable"),
-			new Type("List<Float>", "Arrays.asList(1f, 2f, 3f)", "@Nonnull"),
-	};
-
-	public static void saveGeneratedFiles(MainGenerator gen, File outPth, int fileCount) {
+	static void saveGeneratedFiles(MainGenerator gen, File outPth, int fileCount) {
 		System.out.print(gen.mode.name());
 		var dir = Paths.get(outPth.getAbsolutePath(), gen.mode.name().toLowerCase(), "src", "main", "java", "bench");
 		dir.toFile().mkdirs();
@@ -129,6 +37,10 @@ public class MainGenerator {
 			}
 		}
 		System.out.println(" done");
+	}
+
+	CharSequence generateDataClass(Clas clas, int fieldCount, int seed) {
+		return new ClasGenerator(mode).generateDataClass(clas, fieldCount, seed);
 	}
 
 	public static void main(String[] args) {

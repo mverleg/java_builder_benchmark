@@ -3,90 +3,14 @@ package nl.markv.bench.builder;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import javax.annotation.Nullable;
-
-public class ClasGenerator {
-
-	static class Clas {
-		final String name;
-
-		public Clas(String name) {
-			this.name = name;
-		}
-
-		CharSequence typeName() {
-			return this.name;
-		}
-
-		CharSequence implName() {
-			return this.name + "Impl";
-		}
-
-		CharSequence builderName() {
-			return this.name + "Builder";
-		}
-	}
-
-	static class Type {
-		final String name;
-		final String value;
-		final @Nullable String annotation;
-
-		public Type(String name, String value, @Nullable String annotation) {
-			this.name = name;
-			this.value = value;
-			this.annotation = annotation;
-		}
-	}
-
-	static class Field {
-		final Type type;
-		final int index;
-		final String baseName;
-
-		public Field(Type type, int index) {
-			this.type = type;
-			this.index = index;
-			var name = type.name.replace("[]", "Array").replaceAll("([a-zA-Z]+)<([a-zA-Z]+)>", "$2$1") + (index + 1);
-			this.baseName = name.substring(0, 1).toUpperCase() + name.substring(1);
-		}
-
-		CharSequence fieldName() {
-			return "a" + this.baseName;
-		}
-
-		CharSequence getterName() {
-			return ("boolean".equals(type.name) ? "is" : "get") + this.baseName;
-		}
-
-		CharSequence annotatedType() {
-			return type.annotation == null ? type.name : type.annotation + ' ' + type.name;
-		}
-	}
-
-	enum Mode {
-		ConstructorOnly,
-		HardCodedBuilder,
-		ImmutableFlexibleBuilder,
-		ImmutableStagedBuilder,
-		;
-
-		boolean isInterface() {
-			return switch (this) {
-				case ConstructorOnly -> false;
-				case HardCodedBuilder -> false;
-				case ImmutableFlexibleBuilder -> true;
-				case ImmutableStagedBuilder -> true;
-			};
-		}
-	}
+class ClasGenerator {
 
 	private final Mode mode;
 
 	// var inst = ImmutableStagedBuilder7Impl.builder().int3(1).short4((short)1).string5("").string6("").double7(1d).build();
 	//TODO @mark: ^
 
-	public ClasGenerator(Mode mode) {
+	ClasGenerator(Mode mode) {
 		this.mode = mode;
 	}
 
