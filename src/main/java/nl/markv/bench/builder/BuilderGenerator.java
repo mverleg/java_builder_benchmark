@@ -29,16 +29,24 @@ class BuilderGenerator {
 		var src = new StringBuilder(indent)
 				.append('\t')
 				.append(clas.builderName())
-				.append("() {\n");
+				.append("() {\n\t\t")
+				.append(indent)
+				.append("this(");
+		var separator = "";
 		for (var field : fields) {
-			src.append(indent)
-					.append("\t\tthis.")
+			src.append(separator)
+					.append("\n\t\t\t")
+					.append(indent)
+					.append("/*")
 					.append(field.fieldName())
-					.append(" = ")
-					.append(field.type.value)
-					.append(";\n");
+					.append("*/ ")
+					.append(field.type.value);
+			separator = ",";
 		}
-		return src.append(indent)
+		return src.append('\n')
+				.append(indent)
+				.append("\t\t);\n")
+				.append(indent)
 				.append("\t}\n\n");
 	}
 
